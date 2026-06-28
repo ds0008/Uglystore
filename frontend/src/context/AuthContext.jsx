@@ -8,6 +8,13 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const oauthToken = params.get("token");
+    if (oauthToken) {
+      localStorage.setItem("token", oauthToken);
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+
     const token = localStorage.getItem("token");
     if (!token) {
       setLoading(false);
