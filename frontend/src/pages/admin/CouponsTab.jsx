@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Plus, Trash2, Tag } from "lucide-react";
 import { api } from "../../lib/api";
+import { formatDateShort } from "../../lib/formatters";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 const COUPON_TYPES = ["PERCENTAGE", "FIXED_AMOUNT", "FREE_SHIPPING", "BUY_X_GET_Y"];
@@ -58,7 +60,7 @@ export default function CouponsTab() {
     }
   };
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   return (
     <div className="space-y-4">
@@ -124,7 +126,7 @@ export default function CouponsTab() {
                   <td className="px-4 py-3 text-gray-700">
                     {coupon.usedCount || 0}{coupon.usageLimit ? `/${coupon.usageLimit}` : ""}
                   </td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{new Date(coupon.endDate).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{formatDateShort(coupon.endDate)}</td>
                   <td className="px-4 py-3">
                     <button onClick={() => toggleCoupon(coupon)} className={`px-2 py-1 rounded text-xs font-medium ${coupon.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>
                       {coupon.isActive ? "Active" : "Inactive"}

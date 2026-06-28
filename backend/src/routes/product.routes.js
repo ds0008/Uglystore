@@ -5,18 +5,11 @@ const {
   AppError,
   ApiResponse,
   paginate,
+  slugify,
 } = require("../utils");
 const { authenticate, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
-
-const slugify = (text) =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/-+/g, "-");
 
 router.get(
   "/",

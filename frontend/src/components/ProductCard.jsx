@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { ShoppingCart } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { formatPrice } from "../lib/formatters";
 import toast from "react-hot-toast";
 
 export default function ProductCard({ product }) {
@@ -29,7 +30,7 @@ export default function ProductCard({ product }) {
         </p>
         <div className="flex items-center justify-between mt-3">
           <span className="text-lg font-semibold text-gray-900">
-            ৳{Number(product.price).toFixed(2)}
+            {formatPrice(product.price)}
           </span>
           <button
             onClick={handleAdd}

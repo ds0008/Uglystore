@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { BarChart3, TrendingUp, Calendar } from "lucide-react";
 import { api } from "../../lib/api";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 export default function ReportsTab() {
@@ -26,7 +27,7 @@ export default function ReportsTab() {
 
   useEffect(() => { fetchReports(); }, [period]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   const dailySales = salesData?.dailySales ? Object.entries(salesData.dailySales) : [];
   const maxSale = dailySales.length > 0 ? Math.max(...dailySales.map(([, v]) => v)) : 0;

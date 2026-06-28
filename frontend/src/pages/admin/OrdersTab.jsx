@@ -1,19 +1,11 @@
 import { useEffect, useState } from "react";
 import { FileText, RotateCcw } from "lucide-react";
 import { api } from "../../lib/api";
+import { ORDER_STATUS_COLORS, ORDER_STATUSES } from "../../lib/constants";
+import { formatPriceRounded, formatDateShort } from "../../lib/formatters";
+import StatusBadge from "../../components/StatusBadge";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
-
-const STATUS_COLORS = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  PROCESSING: "bg-blue-100 text-blue-800",
-  SHIPPED: "bg-purple-100 text-purple-800",
-  DELIVERED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-red-100 text-red-800",
-  RETURNED: "bg-orange-100 text-orange-800",
-  REFUNDED: "bg-gray-100 text-gray-800",
-};
-
-const STATUSES = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED", "REFUNDED"];
 
 export default function OrdersTab() {
   const [orders, setOrders] = useState([]);
@@ -84,7 +76,7 @@ export default function OrdersTab() {
     ? orders.filter((o) => o.status === filterStatus)
     : orders;
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   return (
     <div className="space-y-4">
@@ -93,11 +85,11 @@ export default function OrdersTab() {
           <button onClick={() => setFilterStatus("")} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${!filterStatus ? "bg-black text-white" : "bg-gray-100 text-gray-700 hover:bg-gray-200"}`}>
             All ({orders.length})
           </button>
-          {STATUSES.map((s) => {
+          {ORDER_STATUSES.map((s) => {
             const count = orders.filter((o) => o.status === s).length;
             if (count === 0) return null;
             return (
-              <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filterStatus === s ? "bg-black text-white" : `${STATUS_COLORS[s]} hover:opacity-80`}`}>
+              <button key={s} onClick={() => setFilterStatus(s)} className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filterStatus === s ? "bg-black text-white" : `${ORDER_STATUS_COLORS[s]} hover:opacity-80`}`}>
                 {s} ({count})
               </button>
             );
@@ -130,7 +122,7 @@ export default function OrdersTab() {
                       <p className="text-xs text-gray-500">{order.user?.email || ""}</p>
                     </td>
                     <td className="px-4 py-3 text-gray-700">{order.items?.length || 0}</td>
-                    <td className="px-4 py-3 font-medium">৳{Number(order.totalAmount).toFixed(0)}</td>
+                    <td className="px-4 py-3 font-medium">{formatPriceRounded(order.totalAmount)}</td>
                     <td className="px-4 py-3">
                       <p className="text-xs text-gray-700">{order.paymentMethod?.replace("_", " ")}</p>
                       <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${order.paymentStatus === "PAID" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
@@ -139,11 +131,11 @@ export default function OrdersTab() {
                     </td>
                     <td className="px-4 py-3">
                       <select value={order.status} onChange={(e) => updateStatus(order.id, e.target.value)}
-                        className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${STATUS_COLORS[order.status]}`}>
-                        {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${ORDER_STATUS_COLORS[order.status]}`}>
+                        {ORDER_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
                       </select>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatDateShort(order.createdAt)}</td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
                         <button onClick={() => fetchTimeline(order.id)} className="p-1 text-gray-500 hover:text-blue-600" title="Timeline">
@@ -168,7 +160,7 @@ export default function OrdersTab() {
                           <div className="space-y-1">
                             {timeline[order.id].map((t) => (
                               <div key={t.id} className="flex items-center gap-2 text-xs">
-                                <span className={`px-2 py-0.5 rounded ${STATUS_COLORS[t.status] || "bg-gray-100 text-gray-700"}`}>{t.status}</span>
+                                <StatusBadge status={t.status} className="px-2 py-0.5" />
                                 <span className="text-gray-500">{new Date(t.createdAt).toLocaleString()}</span>
                                 {t.note && <span className="text-gray-600">— {t.note}</span>}
                               </div>

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Plus, Warehouse, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import { api } from "../../lib/api";
+import { formatDateShort } from "../../lib/formatters";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 export default function InventoryTab() {
@@ -58,7 +60,7 @@ export default function InventoryTab() {
     }
   };
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   return (
     <div className="space-y-4">
@@ -158,7 +160,7 @@ export default function InventoryTab() {
                   </td>
                   <td className="px-4 py-3 font-medium text-gray-700">{log.quantity}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{log.note || "—"}</td>
-                  <td className="px-4 py-3 text-xs text-gray-500">{new Date(log.createdAt).toLocaleDateString()}</td>
+                  <td className="px-4 py-3 text-xs text-gray-500">{formatDateShort(log.createdAt)}</td>
                 </tr>
               ))}
             </tbody>

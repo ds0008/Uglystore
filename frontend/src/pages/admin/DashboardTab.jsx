@@ -1,17 +1,10 @@
 import { useEffect, useState } from "react";
 import { ShoppingBag, Package, Users, DollarSign, TrendingUp, AlertTriangle, Clock } from "lucide-react";
 import { api } from "../../lib/api";
+import { ORDER_STATUSES } from "../../lib/constants";
+import { formatDateShort } from "../../lib/formatters";
+import StatusBadge from "../../components/StatusBadge";
 import toast from "react-hot-toast";
-
-const STATUS_COLORS = {
-  PENDING: "bg-yellow-100 text-yellow-800",
-  PROCESSING: "bg-blue-100 text-blue-800",
-  SHIPPED: "bg-purple-100 text-purple-800",
-  DELIVERED: "bg-green-100 text-green-800",
-  CANCELLED: "bg-red-100 text-red-800",
-  RETURNED: "bg-orange-100 text-orange-800",
-  REFUNDED: "bg-gray-100 text-gray-800",
-};
 
 function StatCard({ icon: Icon, label, value, color, subtitle }) {
   return (
@@ -59,8 +52,6 @@ export default function DashboardTab() {
 
   if (!stats) return <p className="text-gray-500">Unable to load dashboard.</p>;
 
-  const ORDER_STATUSES = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED", "REFUNDED"];
-
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -97,9 +88,7 @@ export default function DashboardTab() {
               const pct = Math.round((count / total) * 100);
               return (
                 <div key={status} className="flex items-center gap-3">
-                  <span className={`px-2 py-1 rounded text-xs font-medium w-28 text-center ${STATUS_COLORS[status]}`}>
-                    {status}
-                  </span>
+                  <StatusBadge status={status} className="w-28 text-center" />
                   <div className="flex-1 bg-gray-100 rounded-full h-2">
                     <div className="bg-gray-800 rounded-full h-2" style={{ width: `${pct}%` }} />
                   </div>
@@ -163,13 +152,11 @@ export default function DashboardTab() {
                 <div key={order.id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{order.user?.fullName || "N/A"}</p>
-                    <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString()}</p>
+                    <p className="text-xs text-gray-500">{formatDateShort(order.createdAt)}</p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-medium">৳{Number(order.totalAmount).toFixed(0)}</p>
-                    <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${STATUS_COLORS[order.status]}`}>
-                      {order.status}
-                    </span>
+                    <StatusBadge status={order.status} className="px-2 py-0.5" />
                   </div>
                 </div>
               ))}
