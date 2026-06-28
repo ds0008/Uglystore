@@ -144,4 +144,108 @@ describe("errorHandler middleware", () => {
       expect.objectContaining({ success: false, message: "Internal Server Error" })
     );
   });
+
+  describe("Prisma error normalization", () => {
+    it("should convert P2002 unique constraint to 409 Conflict", () => {
+      const err = { code: "P2002", meta: { target: ["email"] } };
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "A record with that email already exists",
+        })
+      );
+    });
+
+    it("should handle P2002 with multiple fields", () => {
+      const err = { code: "P2002", meta: { target: ["email", "name"] } };
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "A record with that email, name already exists",
+        })
+      );
+    });
+
+    it("should handle P2002 without meta target gracefully", () => {
+      const err = { code: "P2002", meta: {} };
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "A record with that field already exists",
+        })
+      );
+    });
+
+    it("should convert P2025 record not found to 404", () => {
+      const err = { code: "P2025", meta: { cause: "Record to update not found." } };
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          success: false,
+          message: "Record to update not found.",
+        })
+      );
+    });
+
+    it("should use default message for P2025 without meta cause", () => {
+      const err = { code: "P2025", meta: {} };
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "The requested record was not found",
+        })
+      );
+    });
+
+    it("should convert P2003 foreign key constraint to 400", () => {
+      const err = { code: "P2003", meta: { field_name: "categoryId" } };
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Invalid categoryId: the referenced record does not exist",
+        })
+      );
+    });
+
+    it("should convert P2014 required relation to 409", () => {
+      const err = { code: "P2014" };
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Cannot delete this record because it is referenced by other records",
+        })
+      );
+    });
+
+    it("should treat unknown Prisma error codes as regular errors", () => {
+      const err = new Error("Unknown prisma error");
+      err.code = "P9999";
+
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+    });
+  });
 });

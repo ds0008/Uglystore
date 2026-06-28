@@ -186,6 +186,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { name, description, image, parentId } = req.body;
+
+    const existing = await prisma.category.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Category not found");
+
     const data = {};
     if (name !== undefined) {
       data.name = name;
@@ -203,6 +207,9 @@ router.put(
 router.delete(
   "/categories/:id",
   asyncHandler(async (req, res) => {
+    const existing = await prisma.category.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw AppError.notFound("Category not found");
+
     await prisma.category.delete({ where: { id: req.params.id } });
     ApiResponse.noContent(res);
   }),
@@ -233,14 +240,22 @@ router.post(
       throw AppError.badRequest("productId, type, and quantity are required");
     }
 
-    const log = await prisma.inventoryLog.create({
-      data: { productId, warehouseId, type, quantity: Number(quantity), note },
-    });
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw AppError.notFound("Product not found");
 
     const stockChange = type === "STOCK_IN" ? Number(quantity) : -Number(quantity);
-    await prisma.product.update({
-      where: { id: productId },
-      data: { stock: { increment: stockChange } },
+
+    const log = await prisma.$transaction(async (tx) => {
+      const entry = await tx.inventoryLog.create({
+        data: { productId, warehouseId, type, quantity: Number(quantity), note },
+      });
+
+      await tx.product.update({
+        where: { id: productId },
+        data: { stock: { increment: stockChange } },
+      });
+
+      return entry;
     });
 
     ApiResponse.created(res, log);
@@ -318,6 +333,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { isActive, value, minOrderValue, maxDiscount, usageLimit, endDate } = req.body;
+
+    const existing = await prisma.coupon.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Coupon not found");
+
     const data = {};
     if (isActive !== undefined) data.isActive = isActive;
     if (value !== undefined) data.value = Number(value);
@@ -334,6 +353,9 @@ router.put(
 router.delete(
   "/coupons/:id",
   asyncHandler(async (req, res) => {
+    const existing = await prisma.coupon.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw AppError.notFound("Coupon not found");
+
     await prisma.coupon.delete({ where: { id: req.params.id } });
     ApiResponse.noContent(res);
   }),
@@ -411,17 +433,21 @@ router.post(
     if (!order) throw AppError.notFound("Order not found");
     if (!amount || Number(amount) <= 0) throw AppError.badRequest("Valid amount is required");
 
-    const refund = await prisma.refund.create({
-      data: { orderId: id, amount: Number(amount), reason },
-    });
+    const refund = await prisma.$transaction(async (tx) => {
+      const entry = await tx.refund.create({
+        data: { orderId: id, amount: Number(amount), reason },
+      });
 
-    await prisma.order.update({
-      where: { id },
-      data: { paymentStatus: "REFUNDED", status: "REFUNDED" },
-    });
+      await tx.order.update({
+        where: { id },
+        data: { paymentStatus: "REFUNDED", status: "REFUNDED" },
+      });
 
-    await prisma.orderTimeline.create({
-      data: { orderId: id, status: "REFUNDED", note: `Refund of ৳${amount}: ${reason || "No reason"}` },
+      await tx.orderTimeline.create({
+        data: { orderId: id, status: "REFUNDED", note: `Refund of ৳${amount}: ${reason || "No reason"}` },
+      });
+
+      return entry;
     });
 
     ApiResponse.created(res, refund);
@@ -455,6 +481,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { name, type, regions, rate, freeAbove, isActive } = req.body;
+
+    const existing = await prisma.shippingZone.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Shipping zone not found");
+
     const data = {};
     if (name !== undefined) data.name = name;
     if (type !== undefined) data.type = type;
@@ -520,6 +550,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { title, image, link, position, isActive, startDate, endDate } = req.body;
+
+    const existing = await prisma.banner.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Banner not found");
+
     const data = {};
     if (title !== undefined) data.title = title;
     if (image !== undefined) data.image = image;
@@ -537,6 +571,9 @@ router.put(
 router.delete(
   "/banners/:id",
   asyncHandler(async (req, res) => {
+    const existing = await prisma.banner.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw AppError.notFound("Banner not found");
+
     await prisma.banner.delete({ where: { id: req.params.id } });
     ApiResponse.noContent(res);
   }),
@@ -798,6 +835,10 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status, priority } = req.body;
+
+    const existing = await prisma.supportTicket.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Support ticket not found");
+
     const data = {};
     if (status) data.status = status;
     if (priority) data.priority = priority;

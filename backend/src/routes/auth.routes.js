@@ -82,6 +82,9 @@ router.get(
         createdAt: true,
       },
     });
+    if (!user) {
+      throw AppError.notFound("User no longer exists");
+    }
     ApiResponse.success(res, user);
   }),
 );
