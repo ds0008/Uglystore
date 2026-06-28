@@ -9,8 +9,29 @@ const request = async (path, options = {}) => {
     headers.Authorization = `Bearer ${token}`;
   }
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const data = res.status === 204 ? null : await res.json();
+  let res;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch (networkError) {
+    const error = new Error("Network error: unable to reach the server");
+    error.status = 0;
+    throw error;
+  }
+
+  if (res.status === 204) {
+    return null;
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch {
+    const error = new Error(
+      `Server returned an unexpected response (HTTP ${res.status})`,
+    );
+    error.status = res.status;
+    throw error;
+  }
 
   if (!res.ok) {
     const error = new Error(data?.message || "Request failed");

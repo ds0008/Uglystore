@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Plus, Truck, MapPin } from "lucide-react";
 import { api } from "../../lib/api";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 export default function ShippingTab() {
@@ -69,7 +70,7 @@ export default function ShippingTab() {
     }
   };
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   return (
     <div className="space-y-6">

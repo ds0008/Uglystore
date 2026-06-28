@@ -4,6 +4,7 @@ const ApiResponse = require("./ApiResponse");
 const paginate = require("./paginate");
 const createCrudService = require("./crudService");
 const slugify = require("./slugify");
+const paginatedFind = require("./paginatedFind");
 
 module.exports = {
   AppError,
@@ -12,4 +13,5 @@ module.exports = {
   paginate,
   createCrudService,
   slugify,
+  paginatedFind,
 };

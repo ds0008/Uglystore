@@ -1,6 +1,6 @@
 const express = require("express");
 const { prisma } = require("../config/db");
-const { asyncHandler, AppError, ApiResponse, paginate, slugify } = require("../utils");
+const { asyncHandler, AppError, ApiResponse, paginate, slugify, paginatedFind } = require("../utils");
 const { authenticate, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
@@ -190,6 +190,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { name, description, image, parentId } = req.body;
+
+    const existing = await prisma.category.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Category not found");
+
     const data = {};
     if (name !== undefined) {
       data.name = name;
@@ -213,6 +217,9 @@ router.put(
 router.delete(
   "/categories/:id",
   asyncHandler(async (req, res) => {
+    const existing = await prisma.category.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw AppError.notFound("Category not found");
+
     await prisma.category.delete({ where: { id: req.params.id } });
     ApiResponse.noContent(res);
   }),
@@ -223,15 +230,9 @@ router.delete(
 router.get(
   "/inventory",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const logs = await prisma.inventoryLog.findMany({
-      skip,
-      take,
-      orderBy: { createdAt: "desc" },
+    await paginatedFind(prisma.inventoryLog, req, res, {
       include: { product: { select: { name: true, sku: true } }, warehouse: { select: { name: true } } },
     });
-    const total = await prisma.inventoryLog.count();
-    ApiResponse.paginated(res, { data: logs, page, limit, total });
   }),
 );
 
@@ -242,6 +243,14 @@ router.post(
     if (!productId || !type || !quantity) {
       throw AppError.badRequest("productId, type, and quantity are required");
     }
+
+    const validInventoryTypes = ["STOCK_IN", "STOCK_OUT", "ADJUSTMENT", "RETURN"];
+    if (!validInventoryTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validInventoryTypes.join(", ")}`);
+    }
+
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw AppError.notFound("Product not found");
 
     const stockChange = type === "STOCK_IN" || type === "RETURN" ? Number(quantity) : -Number(quantity);
 
@@ -289,17 +298,9 @@ router.post(
 router.get(
   "/coupons",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [coupons, total] = await Promise.all([
-      prisma.coupon.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { _count: { select: { usages: true } } },
-      }),
-      prisma.coupon.count(),
-    ]);
-    ApiResponse.paginated(res, { data: coupons, page, limit, total });
+    await paginatedFind(prisma.coupon, req, res, {
+      include: { _count: { select: { usages: true } } },
+    });
   }),
 );
 
@@ -309,6 +310,16 @@ router.post(
     const { code, type, scope, value, minOrderValue, maxDiscount, usageLimit, usageLimitPerCustomer, startDate, endDate } = req.body;
     if (!code || !type || !value || !startDate || !endDate) {
       throw AppError.badRequest("code, type, value, startDate, and endDate are required");
+    }
+
+    const validCouponTypes = ["PERCENTAGE", "FIXED_AMOUNT", "FREE_SHIPPING", "BUY_X_GET_Y"];
+    if (!validCouponTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validCouponTypes.join(", ")}`);
+    }
+
+    const validScopes = ["ALL", "CATEGORY", "PRODUCT", "CUSTOMER", "FIRST_ORDER"];
+    if (scope && !validScopes.includes(scope)) {
+      throw AppError.badRequest(`scope must be one of: ${validScopes.join(", ")}`);
     }
 
     const existing = await prisma.coupon.findUnique({ where: { code: code.toUpperCase() } });
@@ -337,6 +348,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { isActive, value, minOrderValue, maxDiscount, usageLimit, endDate } = req.body;
+
+    const existing = await prisma.coupon.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Coupon not found");
+
     const data = {};
     if (isActive !== undefined) data.isActive = isActive;
     if (value !== undefined) data.value = Number(value);
@@ -353,6 +368,9 @@ router.put(
 router.delete(
   "/coupons/:id",
   asyncHandler(async (req, res) => {
+    const existing = await prisma.coupon.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw AppError.notFound("Coupon not found");
+
     await prisma.coupon.delete({ where: { id: req.params.id } });
     ApiResponse.noContent(res);
   }),
@@ -363,17 +381,9 @@ router.delete(
 router.get(
   "/invoices",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [invoices, total] = await Promise.all([
-      prisma.invoice.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
-      }),
-      prisma.invoice.count(),
-    ]);
-    ApiResponse.paginated(res, { data: invoices, page, limit, total });
+    await paginatedFind(prisma.invoice, req, res, {
+      include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
+    });
   }),
 );
 
@@ -428,6 +438,9 @@ router.post(
     const order = await prisma.order.findUnique({ where: { id }, include: { refunds: true } });
     if (!order) throw AppError.notFound("Order not found");
     if (!amount || Number(amount) <= 0) throw AppError.badRequest("Valid amount is required");
+    if (Number(amount) > Number(order.totalAmount)) {
+      throw AppError.badRequest("Refund amount cannot exceed order total");
+    }
 
     const previousRefunds = order.refunds.reduce((sum, r) => sum + Number(r.amount), 0);
     const refundAmount = Number(amount);
@@ -435,22 +448,27 @@ router.post(
       throw AppError.badRequest(`Refund amount exceeds remaining refundable amount (max: ৳${(Number(order.totalAmount) - previousRefunds).toFixed(2)})`);
     }
 
-    const refund = await prisma.refund.create({
-      data: { orderId: id, amount: refundAmount, reason },
-    });
-
     const totalRefunded = previousRefunds + refundAmount;
     const isFullRefund = totalRefunded >= Number(order.totalAmount);
-    await prisma.order.update({
-      where: { id },
-      data: {
-        paymentStatus: isFullRefund ? "REFUNDED" : "PARTIALLY_REFUNDED",
-        status: isFullRefund ? "REFUNDED" : order.status,
-      },
-    });
 
-    await prisma.orderTimeline.create({
-      data: { orderId: id, status: "REFUNDED", note: `Refund of ৳${amount}: ${reason || "No reason"}` },
+    const refund = await prisma.$transaction(async (tx) => {
+      const entry = await tx.refund.create({
+        data: { orderId: id, amount: refundAmount, reason },
+      });
+
+      await tx.order.update({
+        where: { id },
+        data: {
+          paymentStatus: isFullRefund ? "REFUNDED" : "PARTIALLY_REFUNDED",
+          status: isFullRefund ? "REFUNDED" : order.status,
+        },
+      });
+
+      await tx.orderTimeline.create({
+        data: { orderId: id, status: "REFUNDED", note: `Refund of ৳${amount}: ${reason || "No reason"}` },
+      });
+
+      return entry;
     });
 
     ApiResponse.created(res, refund);
@@ -472,6 +490,12 @@ router.post(
   asyncHandler(async (req, res) => {
     const { name, type, regions, rate, freeAbove } = req.body;
     if (!name || rate === undefined) throw AppError.badRequest("Name and rate are required");
+
+    const validZoneTypes = ["DOMESTIC", "INTERNATIONAL"];
+    if (type && !validZoneTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validZoneTypes.join(", ")}`);
+    }
+
     const zone = await prisma.shippingZone.create({
       data: { name, type: type || "DOMESTIC", regions: regions || [], rate: Number(rate), freeAbove: freeAbove ? Number(freeAbove) : null },
     });
@@ -484,6 +508,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { name, type, regions, rate, freeAbove, isActive } = req.body;
+
+    const existing = await prisma.shippingZone.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Shipping zone not found");
+
     const data = {};
     if (name !== undefined) data.name = name;
     if (type !== undefined) data.type = type;
@@ -549,6 +577,10 @@ router.put(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { title, image, link, position, isActive, startDate, endDate } = req.body;
+
+    const existing = await prisma.banner.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Banner not found");
+
     const data = {};
     if (title !== undefined) data.title = title;
     if (image !== undefined) data.image = image;
@@ -566,6 +598,9 @@ router.put(
 router.delete(
   "/banners/:id",
   asyncHandler(async (req, res) => {
+    const existing = await prisma.banner.findUnique({ where: { id: req.params.id } });
+    if (!existing) throw AppError.notFound("Banner not found");
+
     await prisma.banner.delete({ where: { id: req.params.id } });
     ApiResponse.noContent(res);
   }),
@@ -584,6 +619,12 @@ router.post(
   asyncHandler(async (req, res) => {
     const { name, type, subject, content, audience, scheduledAt } = req.body;
     if (!name || !type) throw AppError.badRequest("Name and type are required");
+
+    const validCampaignTypes = ["EMAIL", "SMS", "PUSH_NOTIFICATION"];
+    if (!validCampaignTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validCampaignTypes.join(", ")}`);
+    }
+
     const campaign = await prisma.campaign.create({
       data: { name, type, subject, content, audience, scheduledAt: scheduledAt ? new Date(scheduledAt) : null },
     });
@@ -618,34 +659,18 @@ router.post(
 router.get(
   "/transactions",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [transactions, total] = await Promise.all([
-      prisma.transaction.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { order: { select: { id: true, user: { select: { fullName: true } } } } },
-      }),
-      prisma.transaction.count(),
-    ]);
-    ApiResponse.paginated(res, { data: transactions, page, limit, total });
+    await paginatedFind(prisma.transaction, req, res, {
+      include: { order: { select: { id: true, user: { select: { fullName: true } } } } },
+    });
   }),
 );
 
 router.get(
   "/refunds",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [refunds, total] = await Promise.all([
-      prisma.refund.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
-      }),
-      prisma.refund.count(),
-    ]);
-    ApiResponse.paginated(res, { data: refunds, page, limit, total });
+    await paginatedFind(prisma.refund, req, res, {
+      include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
+    });
   }),
 );
 
@@ -746,17 +771,9 @@ router.put(
 router.get(
   "/activity",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [logs, total] = await Promise.all([
-      prisma.activityLog.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { fullName: true, email: true } } },
-      }),
-      prisma.activityLog.count(),
-    ]);
-    ApiResponse.paginated(res, { data: logs, page, limit, total });
+    await paginatedFind(prisma.activityLog, req, res, {
+      include: { user: { select: { fullName: true, email: true } } },
+    });
   }),
 );
 
@@ -765,17 +782,9 @@ router.get(
 router.get(
   "/gift-cards",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [cards, total] = await Promise.all([
-      prisma.giftCard.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { fullName: true, email: true } } },
-      }),
-      prisma.giftCard.count(),
-    ]);
-    ApiResponse.paginated(res, { data: cards, page, limit, total });
+    await paginatedFind(prisma.giftCard, req, res, {
+      include: { user: { select: { fullName: true, email: true } } },
+    });
   }),
 );
 
@@ -804,21 +813,13 @@ router.post(
 router.get(
   "/tickets",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
     const where = {};
     if (req.query.status) where.status = req.query.status;
 
-    const [tickets, total] = await Promise.all([
-      prisma.supportTicket.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { fullName: true, email: true } } },
-      }),
-      prisma.supportTicket.count({ where }),
-    ]);
-    ApiResponse.paginated(res, { data: tickets, page, limit, total });
+    await paginatedFind(prisma.supportTicket, req, res, {
+      where,
+      include: { user: { select: { fullName: true, email: true } } },
+    });
   }),
 );
 
@@ -827,9 +828,28 @@ router.patch(
   asyncHandler(async (req, res) => {
     const { id } = req.params;
     const { status, priority } = req.body;
+
+    const existing = await prisma.supportTicket.findUnique({ where: { id } });
+    if (!existing) throw AppError.notFound("Support ticket not found");
+
     const data = {};
-    if (status) data.status = status;
-    if (priority) data.priority = priority;
+
+    const validTicketStatuses = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+    if (status) {
+      if (!validTicketStatuses.includes(status)) {
+        throw AppError.badRequest(`status must be one of: ${validTicketStatuses.join(", ")}`);
+      }
+      data.status = status;
+    }
+
+    const validPriorities = ["LOW", "NORMAL", "HIGH", "URGENT"];
+    if (priority) {
+      if (!validPriorities.includes(priority)) {
+        throw AppError.badRequest(`priority must be one of: ${validPriorities.join(", ")}`);
+      }
+      data.priority = priority;
+    }
+
     const ticket = await prisma.supportTicket.update({ where: { id }, data });
     ApiResponse.success(res, ticket);
   }),

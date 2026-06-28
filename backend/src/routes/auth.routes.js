@@ -6,19 +6,24 @@ const { authenticate, generateToken } = require("../middleware/auth");
 
 const router = express.Router();
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 router.post(
   "/register",
   asyncHandler(async (req, res) => {
-    const { email, password, fullName } = req.body;
+    const { password, fullName } = req.body;
+    let { email } = req.body;
 
     if (!email || !password || !fullName) {
       throw AppError.badRequest("Email, password, and fullName are required");
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
+    email = email.trim().toLowerCase();
+
+    if (!EMAIL_RE.test(email)) {
       throw AppError.badRequest("Invalid email format");
     }
+
 
     if (password.length < 8) {
       throw AppError.badRequest("Password must be at least 8 characters");
@@ -43,11 +48,13 @@ router.post(
 router.post(
   "/login",
   asyncHandler(async (req, res) => {
-    const { email, password } = req.body;
+    let { email, password } = req.body;
 
     if (!email || !password) {
       throw AppError.badRequest("Email and password are required");
     }
+
+    email = email.trim().toLowerCase();
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
@@ -87,6 +94,9 @@ router.get(
         createdAt: true,
       },
     });
+    if (!user) {
+      throw AppError.notFound("User no longer exists");
+    }
     ApiResponse.success(res, user);
   }),
 );

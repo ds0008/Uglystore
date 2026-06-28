@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Search, CheckCircle } from "lucide-react";
 import { api } from "../../lib/api";
+import { formatDateShort } from "../../lib/formatters";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 const ROLES = ["CUSTOMER", "ADMIN", "PRODUCT_MANAGER", "ORDER_MANAGER", "MARKETING_MANAGER", "FINANCE_MANAGER", "SUPPORT_AGENT"];
@@ -51,7 +53,7 @@ export default function UsersTab() {
     }
   };
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   return (
     <div className="space-y-4">
@@ -113,7 +115,7 @@ export default function UsersTab() {
                     </select>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">
-                    {new Date(user.createdAt).toLocaleDateString()}
+                    {formatDateShort(user.createdAt)}
                   </td>
                 </tr>
               ))}

@@ -7,16 +7,21 @@ const {
   paginate,
   slugify,
 } = require("../utils");
-const { authenticate, requireAdmin } = require("../middleware/auth");
+const { authenticate, optionalAuth, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 
 router.get(
   "/",
+  optionalAuth,
   asyncHandler(async (req, res) => {
     const { skip, take, page, limit } = paginate(req.query);
     const where = {};
 
+    const isAdmin = req.user && req.user.role === "ADMIN";
+    if (req.query.includeInactive === "true" && !isAdmin) {
+      throw AppError.forbidden("Admin access required to view inactive products");
+    }
     if (req.query.includeInactive !== "true") {
       where.isActive = true;
     }
@@ -66,8 +71,8 @@ router.post(
       throw AppError.badRequest("Name and price are required");
     }
 
-    if (Number(price) < 0) {
-      throw AppError.badRequest("Price must be non-negative");
+    if (!Number.isFinite(Number(price)) || Number(price) < 0) {
+      throw AppError.badRequest("Price must be a non-negative number");
     }
 
     let slug = slugify(name);

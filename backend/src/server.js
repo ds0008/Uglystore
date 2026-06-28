@@ -86,10 +86,22 @@ const startServer = async () => {
 
 const shutdown = async (signal) => {
   console.log(`\n${signal} received — shutting down`);
-  if (server) {
-    server.close(() => {
-      console.log("HTTP server closed");
-    });
+  try {
+    if (server) {
+      await new Promise((resolve, reject) => {
+        server.close((err) => {
+          if (err) {
+            console.error("Error closing HTTP server:", err);
+            reject(err);
+          } else {
+            console.log("HTTP server closed");
+            resolve();
+          }
+        });
+      });
+    }
+  } catch {
+    // logged above; proceed to disconnect DB
   }
   await disconnectDB();
   process.exit(0);

@@ -30,6 +30,25 @@ const authenticate = asyncHandler(async (req, res, next) => {
   next();
 });
 
+const optionalAuth = asyncHandler(async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header || !header.startsWith("Bearer ")) {
+    return next();
+  }
+
+  try {
+    const token = header.split(" ")[1];
+    const payload = jwt.verify(token, JWT_SECRET);
+    const user = await prisma.user.findUnique({ where: { id: payload.sub } });
+    if (user) {
+      req.user = user;
+    }
+  } catch {
+    // invalid token — continue as unauthenticated
+  }
+  next();
+});
+
 const requireAdmin = (req, res, next) => {
   if (req.user.role !== "ADMIN") {
     throw AppError.forbidden("Admin access required");
@@ -43,4 +62,4 @@ const generateToken = (user) => {
   });
 };
 
-module.exports = { authenticate, requireAdmin, generateToken };
+module.exports = { authenticate, optionalAuth, requireAdmin, generateToken };
