@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Plus, Image, Megaphone, Zap, Trash2 } from "lucide-react";
 import { api } from "../../lib/api";
+import { formatDateShort } from "../../lib/formatters";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 export default function MarketingTab() {
@@ -94,7 +96,7 @@ export default function MarketingTab() {
     }
   };
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   const sections = [
     { key: "banners", label: "Banners", icon: Image, count: banners.length },
@@ -213,7 +215,7 @@ export default function MarketingTab() {
                         {c.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-xs text-gray-500">{new Date(c.createdAt).toLocaleDateString()}</td>
+                    <td className="px-4 py-3 text-xs text-gray-500">{formatDateShort(c.createdAt)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -256,7 +258,7 @@ export default function MarketingTab() {
                     </p>
                     <p className="text-xs text-gray-500 mt-1">{Number(sale.discount)}% off</p>
                     <p className="text-xs text-gray-500">
-                      {new Date(sale.startDate).toLocaleDateString()} — {new Date(sale.endDate).toLocaleDateString()}
+                      {formatDateShort(sale.startDate)} — {formatDateShort(sale.endDate)}
                     </p>
                   </div>
                   <span className={`text-xs px-2 py-0.5 rounded ${sale.isActive ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"}`}>

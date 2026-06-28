@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search } from "lucide-react";
 import { api } from "../../lib/api";
+import { formatPriceRounded } from "../../lib/formatters";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 export default function ProductsTab() {
@@ -110,7 +112,7 @@ export default function ProductsTab() {
     (p) => p.name.toLowerCase().includes(search.toLowerCase()) || (p.sku && p.sku.toLowerCase().includes(search.toLowerCase()))
   );
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   return (
     <div className="space-y-4">
@@ -177,9 +179,9 @@ export default function ProductsTab() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{product.sku || "—"}</td>
                   <td className="px-4 py-3">
-                    <span className="font-medium">৳{Number(product.price).toFixed(0)}</span>
+                    <span className="font-medium">{formatPriceRounded(product.price)}</span>
                     {product.discountPrice && (
-                      <span className="ml-1 text-xs text-red-500 line-through">৳{Number(product.discountPrice).toFixed(0)}</span>
+                      <span className="ml-1 text-xs text-red-500 line-through">{formatPriceRounded(product.discountPrice)}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">

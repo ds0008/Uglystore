@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { ShoppingCart, ArrowLeft } from "lucide-react";
 import { api } from "../lib/api";
+import { formatPrice } from "../lib/formatters";
 import { useCart } from "../context/CartContext";
 import toast from "react-hot-toast";
 
@@ -65,7 +66,7 @@ export default function ProductDetail() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">{product.name}</h1>
           <p className="text-2xl font-semibold text-gray-900 mt-2">
-            ৳{Number(product.price).toFixed(2)}
+            {formatPrice(product.price)}
           </p>
 
           <p className="text-gray-600 mt-4">

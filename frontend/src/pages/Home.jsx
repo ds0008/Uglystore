@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { api } from "../lib/api";
 import ProductCard from "../components/ProductCard";
+import { SkeletonGrid } from "../components/LoadingSkeleton";
 
 export default function Home() {
   const [products, setProducts] = useState([]);
@@ -41,11 +42,7 @@ export default function Home() {
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="bg-gray-100 rounded-lg h-80 animate-pulse" />
-            ))}
-          </div>
+          <SkeletonGrid count={4} />
         ) : products.length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {products.map((p) => (

@@ -1,6 +1,6 @@
 const express = require("express");
 const { prisma } = require("../config/db");
-const { asyncHandler, AppError, ApiResponse, paginate } = require("../utils");
+const { asyncHandler, AppError, ApiResponse, paginate, slugify, paginatedFind } = require("../utils");
 const { authenticate, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
@@ -173,7 +173,7 @@ router.post(
     const { name, description, image, parentId } = req.body;
     if (!name) throw AppError.badRequest("Name is required");
 
-    const slug = name.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-");
+    const slug = slugify(name);
     const category = await prisma.category.create({
       data: { name, slug, description, image, parentId },
     });
@@ -189,7 +189,7 @@ router.put(
     const data = {};
     if (name !== undefined) {
       data.name = name;
-      data.slug = name.toLowerCase().trim().replace(/[^\w\s-]/g, "").replace(/[\s_]+/g, "-").replace(/-+/g, "-");
+      data.slug = slugify(name);
     }
     if (description !== undefined) data.description = description;
     if (image !== undefined) data.image = image;
@@ -213,15 +213,9 @@ router.delete(
 router.get(
   "/inventory",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const logs = await prisma.inventoryLog.findMany({
-      skip,
-      take,
-      orderBy: { createdAt: "desc" },
+    await paginatedFind(prisma.inventoryLog, req, res, {
       include: { product: { select: { name: true, sku: true } }, warehouse: { select: { name: true } } },
     });
-    const total = await prisma.inventoryLog.count();
-    ApiResponse.paginated(res, { data: logs, page, limit, total });
   }),
 );
 
@@ -270,17 +264,9 @@ router.post(
 router.get(
   "/coupons",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [coupons, total] = await Promise.all([
-      prisma.coupon.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { _count: { select: { usages: true } } },
-      }),
-      prisma.coupon.count(),
-    ]);
-    ApiResponse.paginated(res, { data: coupons, page, limit, total });
+    await paginatedFind(prisma.coupon, req, res, {
+      include: { _count: { select: { usages: true } } },
+    });
   }),
 );
 
@@ -344,17 +330,9 @@ router.delete(
 router.get(
   "/invoices",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [invoices, total] = await Promise.all([
-      prisma.invoice.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
-      }),
-      prisma.invoice.count(),
-    ]);
-    ApiResponse.paginated(res, { data: invoices, page, limit, total });
+    await paginatedFind(prisma.invoice, req, res, {
+      include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
+    });
   }),
 );
 
@@ -589,34 +567,18 @@ router.post(
 router.get(
   "/transactions",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [transactions, total] = await Promise.all([
-      prisma.transaction.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { order: { select: { id: true, user: { select: { fullName: true } } } } },
-      }),
-      prisma.transaction.count(),
-    ]);
-    ApiResponse.paginated(res, { data: transactions, page, limit, total });
+    await paginatedFind(prisma.transaction, req, res, {
+      include: { order: { select: { id: true, user: { select: { fullName: true } } } } },
+    });
   }),
 );
 
 router.get(
   "/refunds",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [refunds, total] = await Promise.all([
-      prisma.refund.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
-      }),
-      prisma.refund.count(),
-    ]);
-    ApiResponse.paginated(res, { data: refunds, page, limit, total });
+    await paginatedFind(prisma.refund, req, res, {
+      include: { order: { include: { user: { select: { fullName: true, email: true } } } } },
+    });
   }),
 );
 
@@ -717,17 +679,9 @@ router.put(
 router.get(
   "/activity",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [logs, total] = await Promise.all([
-      prisma.activityLog.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { fullName: true, email: true } } },
-      }),
-      prisma.activityLog.count(),
-    ]);
-    ApiResponse.paginated(res, { data: logs, page, limit, total });
+    await paginatedFind(prisma.activityLog, req, res, {
+      include: { user: { select: { fullName: true, email: true } } },
+    });
   }),
 );
 
@@ -736,17 +690,9 @@ router.get(
 router.get(
   "/gift-cards",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
-    const [cards, total] = await Promise.all([
-      prisma.giftCard.findMany({
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { fullName: true, email: true } } },
-      }),
-      prisma.giftCard.count(),
-    ]);
-    ApiResponse.paginated(res, { data: cards, page, limit, total });
+    await paginatedFind(prisma.giftCard, req, res, {
+      include: { user: { select: { fullName: true, email: true } } },
+    });
   }),
 );
 
@@ -775,21 +721,13 @@ router.post(
 router.get(
   "/tickets",
   asyncHandler(async (req, res) => {
-    const { skip, take, page, limit } = paginate(req.query);
     const where = {};
     if (req.query.status) where.status = req.query.status;
 
-    const [tickets, total] = await Promise.all([
-      prisma.supportTicket.findMany({
-        where,
-        skip,
-        take,
-        orderBy: { createdAt: "desc" },
-        include: { user: { select: { fullName: true, email: true } } },
-      }),
-      prisma.supportTicket.count({ where }),
-    ]);
-    ApiResponse.paginated(res, { data: tickets, page, limit, total });
+    await paginatedFind(prisma.supportTicket, req, res, {
+      where,
+      include: { user: { select: { fullName: true, email: true } } },
+    });
   }),
 );
 

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Save, Settings } from "lucide-react";
 import { api } from "../../lib/api";
+import { SkeletonBlock } from "../../components/LoadingSkeleton";
 import toast from "react-hot-toast";
 
 const SETTING_GROUPS = [
@@ -82,7 +83,7 @@ export default function SettingsTab() {
     }
   };
 
-  if (loading) return <div className="h-64 bg-gray-100 animate-pulse rounded-xl" />;
+  if (loading) return <SkeletonBlock />;
 
   const group = SETTING_GROUPS.find((g) => g.key === activeGroup);
 
