@@ -234,6 +234,11 @@ router.post(
       throw AppError.badRequest("productId, type, and quantity are required");
     }
 
+    const validInventoryTypes = ["STOCK_IN", "STOCK_OUT", "ADJUSTMENT", "RETURN"];
+    if (!validInventoryTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validInventoryTypes.join(", ")}`);
+    }
+
     const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) throw AppError.notFound("Product not found");
 
@@ -291,6 +296,16 @@ router.post(
     const { code, type, scope, value, minOrderValue, maxDiscount, usageLimit, usageLimitPerCustomer, startDate, endDate } = req.body;
     if (!code || !type || !value || !startDate || !endDate) {
       throw AppError.badRequest("code, type, value, startDate, and endDate are required");
+    }
+
+    const validCouponTypes = ["PERCENTAGE", "FIXED_AMOUNT", "FREE_SHIPPING", "BUY_X_GET_Y"];
+    if (!validCouponTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validCouponTypes.join(", ")}`);
+    }
+
+    const validScopes = ["ALL", "CATEGORY", "PRODUCT", "CUSTOMER", "FIRST_ORDER"];
+    if (scope && !validScopes.includes(scope)) {
+      throw AppError.badRequest(`scope must be one of: ${validScopes.join(", ")}`);
     }
 
     const existing = await prisma.coupon.findUnique({ where: { code: code.toUpperCase() } });
@@ -410,6 +425,9 @@ router.post(
     const order = await prisma.order.findUnique({ where: { id } });
     if (!order) throw AppError.notFound("Order not found");
     if (!amount || Number(amount) <= 0) throw AppError.badRequest("Valid amount is required");
+    if (Number(amount) > Number(order.totalAmount)) {
+      throw AppError.badRequest("Refund amount cannot exceed order total");
+    }
 
     const refund = await prisma.$transaction(async (tx) => {
       const entry = await tx.refund.create({
@@ -447,6 +465,12 @@ router.post(
   asyncHandler(async (req, res) => {
     const { name, type, regions, rate, freeAbove } = req.body;
     if (!name || rate === undefined) throw AppError.badRequest("Name and rate are required");
+
+    const validZoneTypes = ["DOMESTIC", "INTERNATIONAL"];
+    if (type && !validZoneTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validZoneTypes.join(", ")}`);
+    }
+
     const zone = await prisma.shippingZone.create({
       data: { name, type: type || "DOMESTIC", regions: regions || [], rate: Number(rate), freeAbove: freeAbove ? Number(freeAbove) : null },
     });
@@ -570,6 +594,12 @@ router.post(
   asyncHandler(async (req, res) => {
     const { name, type, subject, content, audience, scheduledAt } = req.body;
     if (!name || !type) throw AppError.badRequest("Name and type are required");
+
+    const validCampaignTypes = ["EMAIL", "SMS", "PUSH_NOTIFICATION"];
+    if (!validCampaignTypes.includes(type)) {
+      throw AppError.badRequest(`type must be one of: ${validCampaignTypes.join(", ")}`);
+    }
+
     const campaign = await prisma.campaign.create({
       data: { name, type, subject, content, audience, scheduledAt: scheduledAt ? new Date(scheduledAt) : null },
     });
@@ -778,8 +808,23 @@ router.patch(
     if (!existing) throw AppError.notFound("Support ticket not found");
 
     const data = {};
-    if (status) data.status = status;
-    if (priority) data.priority = priority;
+
+    const validTicketStatuses = ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"];
+    if (status) {
+      if (!validTicketStatuses.includes(status)) {
+        throw AppError.badRequest(`status must be one of: ${validTicketStatuses.join(", ")}`);
+      }
+      data.status = status;
+    }
+
+    const validPriorities = ["LOW", "NORMAL", "HIGH", "URGENT"];
+    if (priority) {
+      if (!validPriorities.includes(priority)) {
+        throw AppError.badRequest(`priority must be one of: ${validPriorities.join(", ")}`);
+      }
+      data.priority = priority;
+    }
+
     const ticket = await prisma.supportTicket.update({ where: { id }, data });
     ApiResponse.success(res, ticket);
   }),
