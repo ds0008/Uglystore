@@ -82,14 +82,27 @@ describe("Product Routes", () => {
       );
     });
 
-    it("should include inactive products when includeInactive=true", async () => {
+    it("should include inactive products when includeInactive=true with admin auth", async () => {
       prisma.product.findMany.mockResolvedValue([]);
       prisma.product.count.mockResolvedValue(0);
 
-      await request(app).get("/api/products?includeInactive=true");
+      await request(app)
+        .get("/api/products?includeInactive=true")
+        .set("Authorization", `Bearer ${adminToken()}`);
 
       const call = prisma.product.findMany.mock.calls[0][0];
       expect(call.where.isActive).toBeUndefined();
+    });
+
+    it("should return 403 when non-admin uses includeInactive=true", async () => {
+      const customerToken = jwt.sign({ sub: "user-1", role: "CUSTOMER" }, "test-secret-for-jest", { expiresIn: "1h" });
+      prisma.user.findUnique.mockResolvedValue({ id: "user-1", role: "CUSTOMER" });
+
+      const res = await request(app)
+        .get("/api/products?includeInactive=true")
+        .set("Authorization", `Bearer ${customerToken}`);
+
+      expect(res.status).toBe(403);
     });
   });
 
