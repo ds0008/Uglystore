@@ -34,7 +34,7 @@ export default function CouponsTab() {
       setForm({ code: "", type: "PERCENTAGE", scope: "ALL", value: "", minOrderValue: "", maxDiscount: "", usageLimit: "", usageLimitPerCustomer: "1", startDate: "", endDate: "" });
       fetchCoupons();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create coupon");
+      toast.error(err.message || "Failed to create coupon");
     }
   };
 
@@ -76,10 +76,10 @@ export default function CouponsTab() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <input placeholder="Coupon code *" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value })} required className="px-3 py-2 border border-gray-200 rounded-lg text-sm uppercase" />
             <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
-              {COUPON_TYPES.map((t) => <option key={t} value={t}>{t.replace("_", " ")}</option>)}
+              {COUPON_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, " ")}</option>)}
             </select>
             <select value={form.scope} onChange={(e) => setForm({ ...form, scope: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-lg text-sm">
-              {SCOPES.map((s) => <option key={s} value={s}>{s.replace("_", " ")}</option>)}
+              {SCOPES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
             </select>
             <input type="number" step="0.01" placeholder="Value *" value={form.value} onChange={(e) => setForm({ ...form, value: e.target.value })} required className="px-3 py-2 border border-gray-200 rounded-lg text-sm" />
             <input type="number" step="0.01" placeholder="Min order value" value={form.minOrderValue} onChange={(e) => setForm({ ...form, minOrderValue: e.target.value })} className="px-3 py-2 border border-gray-200 rounded-lg text-sm" />
@@ -116,7 +116,7 @@ export default function CouponsTab() {
               {coupons.map((coupon) => (
                 <tr key={coupon.id} className="hover:bg-gray-50">
                   <td className="px-4 py-3 font-mono font-bold text-gray-900">{coupon.code}</td>
-                  <td className="px-4 py-3 text-gray-700">{coupon.type.replace("_", " ")}</td>
+                  <td className="px-4 py-3 text-gray-700">{coupon.type.replace(/_/g, " ")}</td>
                   <td className="px-4 py-3 text-gray-700">
                     {coupon.type === "PERCENTAGE" ? `${Number(coupon.value)}%` : `৳${Number(coupon.value)}`}
                   </td>

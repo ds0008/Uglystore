@@ -44,7 +44,7 @@ export default function MarketingTab() {
       setBannerForm({ title: "", image: "", link: "", position: "HERO" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create banner");
+      toast.error(err.message || "Failed to create banner");
     }
   };
 
@@ -57,7 +57,7 @@ export default function MarketingTab() {
       setCampaignForm({ name: "", type: "EMAIL", subject: "", content: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create campaign");
+      toast.error(err.message || "Failed to create campaign");
     }
   };
 
@@ -70,7 +70,7 @@ export default function MarketingTab() {
       setFlashForm({ name: "", discount: "", startDate: "", endDate: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create flash sale");
+      toast.error(err.message || "Failed to create flash sale");
     }
   };
 

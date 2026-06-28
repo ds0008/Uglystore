@@ -76,7 +76,7 @@ export default function SettingsTab() {
       await api.put("/admin/settings", { settings: values, group: activeGroup });
       toast.success("Settings saved");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save settings");
+      toast.error(err.message || "Failed to save settings");
     } finally {
       setSaving(false);
     }

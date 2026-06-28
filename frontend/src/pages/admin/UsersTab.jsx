@@ -47,7 +47,7 @@ export default function UsersTab() {
       toast.success(`Role updated to ${role}`);
       fetchUsers();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to change role");
+      toast.error(err.message || "Failed to change role");
     }
   };
 
@@ -70,7 +70,7 @@ export default function UsersTab() {
           {ROLES.map((role) => (
             <button key={role} onClick={() => { setFilterRole(role); setPage(1); }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium ${filterRole === role ? "bg-black text-white" : `${ROLE_COLORS[role]} hover:opacity-80`}`}>
-              {role.replace("_", " ")}
+              {role.replace(/_/g, " ")}
             </button>
           ))}
         </div>
@@ -109,7 +109,7 @@ export default function UsersTab() {
                   <td className="px-4 py-3">
                     <select value={user.role} onChange={(e) => changeRole(user.id, e.target.value)}
                       className={`px-2 py-1 rounded text-xs font-medium border-0 cursor-pointer ${ROLE_COLORS[user.role] || "bg-gray-100"}`}>
-                      {ROLES.map((r) => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
+                      {ROLES.map((r) => <option key={r} value={r}>{r.replace(/_/g, " ")}</option>)}
                     </select>
                   </td>
                   <td className="px-4 py-3 text-xs text-gray-500">

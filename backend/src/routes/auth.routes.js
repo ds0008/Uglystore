@@ -15,6 +15,11 @@ router.post(
       throw AppError.badRequest("Email, password, and fullName are required");
     }
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw AppError.badRequest("Invalid email format");
+    }
+
     if (password.length < 8) {
       throw AppError.badRequest("Password must be at least 8 characters");
     }

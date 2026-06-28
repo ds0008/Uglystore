@@ -5,18 +5,11 @@ const {
   AppError,
   ApiResponse,
   paginate,
+  slugify,
 } = require("../utils");
 const { authenticate, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
-
-const slugify = (text) =>
-  text
-    .toLowerCase()
-    .trim()
-    .replace(/[^\w\s-]/g, "")
-    .replace(/[\s_]+/g, "-")
-    .replace(/-+/g, "-");
 
 router.get(
   "/",
@@ -143,7 +136,12 @@ router.delete(
       throw AppError.notFound("Product not found");
     }
 
-    await prisma.product.delete({ where: { id } });
+    const hasOrders = await prisma.orderItem.count({ where: { productId: id } });
+    if (hasOrders > 0) {
+      await prisma.product.update({ where: { id }, data: { isActive: false } });
+    } else {
+      await prisma.product.delete({ where: { id } });
+    }
     ApiResponse.noContent(res);
   }),
 );
