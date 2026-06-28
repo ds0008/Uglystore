@@ -43,7 +43,7 @@ export default function InventoryTab() {
       setForm({ productId: "", warehouseId: "", type: "STOCK_IN", quantity: "", note: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update inventory");
+      toast.error(err.message || "Failed to update inventory");
     }
   };
 
@@ -56,7 +56,7 @@ export default function InventoryTab() {
       setWarehouseForm({ name: "", location: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create warehouse");
+      toast.error(err.message || "Failed to create warehouse");
     }
   };
 

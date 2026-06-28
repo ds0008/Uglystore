@@ -173,7 +173,11 @@ router.post(
     const { name, description, image, parentId } = req.body;
     if (!name) throw AppError.badRequest("Name is required");
 
-    const slug = slugify(name);
+    let slug = slugify(name);
+    const existingSlug = await prisma.category.findUnique({ where: { slug } });
+    if (existingSlug) {
+      slug = `${slug}-${Date.now()}`;
+    }
     const category = await prisma.category.create({
       data: { name, slug, description, image, parentId },
     });
@@ -194,6 +198,12 @@ router.put(
     if (name !== undefined) {
       data.name = name;
       data.slug = slugify(name);
+      const slugConflict = await prisma.category.findFirst({
+        where: { slug: data.slug, id: { not: id } },
+      });
+      if (slugConflict) {
+        data.slug = `${data.slug}-${Date.now()}`;
+      }
     }
     if (description !== undefined) data.description = description;
     if (image !== undefined) data.image = image;
@@ -242,17 +252,21 @@ router.post(
     const product = await prisma.product.findUnique({ where: { id: productId } });
     if (!product) throw AppError.notFound("Product not found");
 
-    const stockChange = type === "STOCK_IN" ? Number(quantity) : -Number(quantity);
+    const stockChange = type === "STOCK_IN" || type === "RETURN" ? Number(quantity) : -Number(quantity);
 
     const log = await prisma.$transaction(async (tx) => {
       const entry = await tx.inventoryLog.create({
         data: { productId, warehouseId, type, quantity: Number(quantity), note },
       });
 
-      await tx.product.update({
+      const updated = await tx.product.update({
         where: { id: productId },
         data: { stock: { increment: stockChange } },
       });
+
+      if (updated.stock < 0) {
+        throw AppError.badRequest("Insufficient stock for this operation");
+      }
 
       return entry;
     });
@@ -383,8 +397,7 @@ router.post(
     const existing = await prisma.invoice.findUnique({ where: { orderId } });
     if (existing) throw AppError.conflict("Invoice already exists for this order");
 
-    const invoiceCount = await prisma.invoice.count();
-    const invoiceNumber = `INV-${String(invoiceCount + 1).padStart(6, "0")}`;
+    const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 
     const invoice = await prisma.invoice.create({
       data: {
@@ -422,21 +435,33 @@ router.post(
     const { id } = req.params;
     const { amount, reason } = req.body;
 
-    const order = await prisma.order.findUnique({ where: { id } });
+    const order = await prisma.order.findUnique({ where: { id }, include: { refunds: true } });
     if (!order) throw AppError.notFound("Order not found");
     if (!amount || Number(amount) <= 0) throw AppError.badRequest("Valid amount is required");
     if (Number(amount) > Number(order.totalAmount)) {
       throw AppError.badRequest("Refund amount cannot exceed order total");
     }
 
+    const previousRefunds = order.refunds.reduce((sum, r) => sum + Number(r.amount), 0);
+    const refundAmount = Number(amount);
+    if (previousRefunds + refundAmount > Number(order.totalAmount)) {
+      throw AppError.badRequest(`Refund amount exceeds remaining refundable amount (max: ৳${(Number(order.totalAmount) - previousRefunds).toFixed(2)})`);
+    }
+
+    const totalRefunded = previousRefunds + refundAmount;
+    const isFullRefund = totalRefunded >= Number(order.totalAmount);
+
     const refund = await prisma.$transaction(async (tx) => {
       const entry = await tx.refund.create({
-        data: { orderId: id, amount: Number(amount), reason },
+        data: { orderId: id, amount: refundAmount, reason },
       });
 
       await tx.order.update({
         where: { id },
-        data: { paymentStatus: "REFUNDED", status: "REFUNDED" },
+        data: {
+          paymentStatus: isFullRefund ? "REFUNDED" : "PARTIALLY_REFUNDED",
+          status: isFullRefund ? "REFUNDED" : order.status,
+        },
       });
 
       await tx.orderTimeline.create({

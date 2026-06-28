@@ -25,15 +25,21 @@ router.post(
       throw AppError.badRequest(`paymentMethod must be one of: ${validMethods.join(", ")}`);
     }
 
+    const mergedItems = new Map();
     for (const item of items) {
       const qty = Number(item.quantity);
       if (!Number.isInteger(qty) || qty < 1) {
         throw AppError.badRequest("Quantity must be a positive integer");
       }
-      item.quantity = qty;
+      if (mergedItems.has(item.productId)) {
+        mergedItems.get(item.productId).quantity += qty;
+      } else {
+        mergedItems.set(item.productId, { productId: item.productId, quantity: qty });
+      }
     }
 
-    const productIds = items.map((i) => i.productId);
+    const deduplicatedItems = Array.from(mergedItems.values());
+    const productIds = deduplicatedItems.map((i) => i.productId);
 
     const order = await prisma.$transaction(async (tx) => {
       const products = await tx.product.findMany({
@@ -47,7 +53,7 @@ router.post(
       const productMap = new Map(products.map((p) => [p.id, p]));
 
       let subtotal = 0;
-      const orderItems = items.map((item) => {
+      const orderItems = deduplicatedItems.map((item) => {
         const product = productMap.get(item.productId);
         if (product.stock < item.quantity) {
           throw AppError.badRequest(`Insufficient stock for "${product.name}"`);
@@ -66,7 +72,7 @@ router.post(
       const shippingCost = subtotal >= 1000 ? 0 : 60;
       const totalAmount = subtotal + shippingCost;
 
-      for (const item of items) {
+      for (const item of deduplicatedItems) {
         const updated = await tx.product.update({
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
@@ -142,7 +148,7 @@ router.patch(
   requireAdmin,
   asyncHandler(async (req, res) => {
     const { status } = req.body;
-    const validStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED"];
+    const validStatuses = ["PENDING", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURNED", "REFUNDED"];
 
     if (!status || !validStatuses.includes(status)) {
       throw AppError.badRequest(`Status must be one of: ${validStatuses.join(", ")}`);

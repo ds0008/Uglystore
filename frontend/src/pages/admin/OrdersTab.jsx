@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { FileText, RotateCcw } from "lucide-react";
 import { api } from "../../lib/api";
 import { ORDER_STATUS_COLORS, ORDER_STATUSES } from "../../lib/constants";
@@ -30,7 +30,7 @@ export default function OrdersTab() {
       toast.success(`Status updated to ${status}`);
       fetchOrders();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to update status");
+      toast.error(err.message || "Failed to update status");
     }
   };
 
@@ -52,7 +52,7 @@ export default function OrdersTab() {
       await api.post(`/admin/invoices/${orderId}`);
       toast.success("Invoice generated");
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to generate invoice");
+      toast.error(err.message || "Failed to generate invoice");
     }
   };
 
@@ -68,7 +68,7 @@ export default function OrdersTab() {
       setRefundForm({ amount: "", reason: "" });
       fetchOrders();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to process refund");
+      toast.error(err.message || "Failed to process refund");
     }
   };
 
@@ -114,8 +114,8 @@ export default function OrdersTab() {
             </thead>
             <tbody className="divide-y divide-gray-100">
               {filtered.map((order) => (
-                <>
-                  <tr key={order.id} className="hover:bg-gray-50">
+                <React.Fragment key={order.id}>
+                  <tr className="hover:bg-gray-50">
                     <td className="px-4 py-3 font-mono text-xs text-gray-600">{order.id.slice(0, 8)}...</td>
                     <td className="px-4 py-3">
                       <p className="font-medium text-gray-900">{order.user?.fullName || "N/A"}</p>
@@ -124,7 +124,7 @@ export default function OrdersTab() {
                     <td className="px-4 py-3 text-gray-700">{order.items?.length || 0}</td>
                     <td className="px-4 py-3 font-medium">{formatPriceRounded(order.totalAmount)}</td>
                     <td className="px-4 py-3">
-                      <p className="text-xs text-gray-700">{order.paymentMethod?.replace("_", " ")}</p>
+                      <p className="text-xs text-gray-700">{order.paymentMethod?.replace(/_/g, " ")}</p>
                       <span className={`inline-block px-1.5 py-0.5 rounded text-xs ${order.paymentStatus === "PAID" ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>
                         {order.paymentStatus}
                       </span>
@@ -151,7 +151,7 @@ export default function OrdersTab() {
                     </td>
                   </tr>
                   {timeline[order.id] && (
-                    <tr key={`${order.id}-timeline`}>
+                    <tr>
                       <td colSpan={8} className="px-4 py-3 bg-gray-50">
                         <p className="text-xs font-semibold text-gray-700 mb-2">Order Timeline</p>
                         {timeline[order.id].length === 0 ? (
@@ -170,7 +170,7 @@ export default function OrdersTab() {
                       </td>
                     </tr>
                   )}
-                </>
+                </React.Fragment>
               ))}
             </tbody>
           </table>

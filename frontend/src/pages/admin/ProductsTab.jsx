@@ -61,7 +61,7 @@ export default function ProductsTab() {
       resetForm();
       fetchProducts();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to save product");
+      toast.error(err.message || "Failed to save product");
     }
   };
 
@@ -179,9 +179,9 @@ export default function ProductsTab() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{product.sku || "—"}</td>
                   <td className="px-4 py-3">
-                    <span className="font-medium">{formatPriceRounded(product.price)}</span>
+                    <span className="font-medium">{formatPriceRounded(product.discountPrice || product.price)}</span>
                     {product.discountPrice && (
-                      <span className="ml-1 text-xs text-red-500 line-through">{formatPriceRounded(product.discountPrice)}</span>
+                      <span className="ml-1 text-xs text-gray-400 line-through">{formatPriceRounded(product.price)}</span>
                     )}
                   </td>
                   <td className="px-4 py-3">

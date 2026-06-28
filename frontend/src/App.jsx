@@ -17,6 +17,7 @@ import OrderDetail from "./pages/OrderDetail";
 import Profile from "./pages/Profile";
 import Reels from "./pages/Reels";
 import Admin from "./pages/Admin";
+import NotFound from "./pages/NotFound";
 
 function ProtectedRoute({ children }) {
   const { user, loading } = useAuth();
@@ -54,6 +55,7 @@ export default function App() {
                 <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
                 <Route path="/orders/:id" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
                 <Route path="/admin" element={<AdminRoute><Admin /></AdminRoute>} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </main>
             <Footer />

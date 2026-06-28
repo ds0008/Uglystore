@@ -141,7 +141,12 @@ router.delete(
       throw AppError.notFound("Product not found");
     }
 
-    await prisma.product.delete({ where: { id } });
+    const hasOrders = await prisma.orderItem.count({ where: { productId: id } });
+    if (hasOrders > 0) {
+      await prisma.product.update({ where: { id }, data: { isActive: false } });
+    } else {
+      await prisma.product.delete({ where: { id } });
+    }
     ApiResponse.noContent(res);
   }),
 );

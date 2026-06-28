@@ -44,7 +44,7 @@ export default function ShippingTab() {
       setZoneForm({ name: "", type: "DOMESTIC", regions: "", rate: "", freeAbove: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to create zone");
+      toast.error(err.message || "Failed to create zone");
     }
   };
 
@@ -57,7 +57,7 @@ export default function ShippingTab() {
       setCourierForm({ name: "", trackingUrl: "" });
       fetchData();
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to add courier");
+      toast.error(err.message || "Failed to add courier");
     }
   };
 

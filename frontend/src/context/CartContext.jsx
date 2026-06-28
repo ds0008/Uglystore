@@ -24,11 +24,15 @@ export function CartProvider({ children }) {
     setItems((prev) => {
       const existing = prev.find((i) => i.id === product.id);
       if (existing) {
+        const newQty = Math.min(existing.quantity + quantity, product.stock);
+        if (newQty === existing.quantity) return prev;
         return prev.map((i) =>
-          i.id === product.id ? { ...i, quantity: i.quantity + quantity } : i,
+          i.id === product.id ? { ...i, quantity: newQty } : i,
         );
       }
-      return [...prev, { ...product, quantity }];
+      const clampedQty = Math.min(quantity, product.stock);
+      if (clampedQty < 1) return prev;
+      return [...prev, { ...product, quantity: clampedQty }];
     });
   };
 

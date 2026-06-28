@@ -24,6 +24,7 @@ router.post(
       throw AppError.badRequest("Invalid email format");
     }
 
+
     if (password.length < 8) {
       throw AppError.badRequest("Password must be at least 8 characters");
     }
